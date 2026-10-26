@@ -1,6 +1,5 @@
 -- ==========================================
--- Vexon Hub v4 — ULTRA PREMIUM EDITION
--- Aurora · Confetti · Loading · Rich Animations
+-- Vexon Hub v4 — bugs fixed and antiban 
 -- ==========================================
 local Players           = game:GetService("Players")
 local localPlayer       = Players.LocalPlayer
