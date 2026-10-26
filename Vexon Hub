@@ -1,5 +1,5 @@
 -- ==========================================
--- Vexon Hub — bugs fixed 
+-- Vexon Hub — bugs fixed and antiban----
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -17,11 +17,6 @@ local CONFIG_FOLDER = "VexonHub"
 local CONFIG_FILE = CONFIG_FOLDER .. "/Config.json"
 local isRunning = true
 
--- ⭐⭐⭐ POZA NARUTO (Dacă nu merge, pune ID-ul tău aici) ⭐⭐⭐
-local ANIME_BG_ID = "rbxassetid://13161819131" 
-local ANIME_BG_ENABLED = true
-local ANIME_BG_TRANSPARENCY = 0.4    -- 0 = opac, 1 = invizibil (0.4 e perfect)
-
 -- Sunete
 local function playSound(id, vol)
     pcall(function()
@@ -30,11 +25,17 @@ local function playSound(id, vol)
         s.Volume = vol or 0.5
         s.Parent = SoundService
         s:Play()
-        task.delay(1, function() s:Destroy() end)
+        task.delay(2, function() s:Destroy() end)
     end)
 end
-local function clickSound() playSound("6895079853", 0.4) end
-local function toggleSound() playSound("5861513536", 0.3) end
+
+-- Sunete UI (Curate și profi)
+local function clickSound() playSound("8768358551", 0.4) end -- Click scurt
+local function toggleSound() playSound("1328704087", 0.3) end -- Pop finuț
+
+-- Sunete Gameplay (Hit & Kill)
+local function playHitSound() playSound("5785409103", 0.35) end -- Hitmarker (când tragi)
+local function playKillSound() playSound("3390324911", 0.6) end -- Kill (când moare un inamic)
 
 -- Culori
 local C = {
@@ -318,18 +319,6 @@ function Lib:CreateWindow()
         ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 160, 255))
     })}, mainStroke)
 
-    -- ⭐⭐⭐ POZA NARUTO CA FUNDAL ⭐⭐⭐
-    local animeBg = new("ImageLabel", {
-        Name = "AnimeBG",
-        Size = UDim2.fromScale(1.2, 1.2),
-        Position = UDim2.fromScale(-0.1, -0.1),
-        BackgroundTransparency = 1,
-        Image = ANIME_BG_ID,
-        ImageTransparency = ANIME_BG_TRANSPARENCY,
-        ScaleType = Enum.ScaleType.Crop,
-        ZIndex = 0, Active = false, Visible = ANIME_BG_ENABLED,
-    }, main)
-
     -- Overlay gradient întunecat (să se vadă textul)
     local bgOverlay = new("Frame", {
         Size = UDim2.fromScale(1, 1),
@@ -413,7 +402,6 @@ function Lib:CreateWindow()
 
     local particles = createFloatingParticles(vfxLayer, 15, C.accent)
     local pulseT = 0
-    local animeT = 0
 
     do
         local dragging, dragStart, startPos = false, nil, nil
@@ -446,7 +434,6 @@ function Lib:CreateWindow()
         if not isRunning then return end
         hue = (hue + dt * 0.3) % 1
         pulseT = pulseT + dt
-        animeT = animeT + dt
 
         if hudStroke then hudStroke.Color = Color3.fromHSV(hue, 1, 1) end
 
@@ -457,16 +444,6 @@ function Lib:CreateWindow()
 
         if mainStroke then
             mainStroke.Thickness = 2 + math.sin(pulseT * 2) * 0.5
-        end
-
-        -- ⭐ ANIMAȚIE NARUTO (Ken Burns - zoom cinematic și mișcare)
-        if animeBg and animeBg.Visible then
-            local zoom = 1.25 + math.sin(animeT * 0.2) * 0.1
-            local panX = math.sin(animeT * 0.15) * 0.05
-            local panY = math.cos(animeT * 0.18) * 0.05
-            local off = (zoom - 1) / 2
-            animeBg.Size = UDim2.fromScale(zoom, zoom)
-            animeBg.Position = UDim2.fromScale(-off + panX, -off + panY)
         end
     end)
 
@@ -696,6 +673,7 @@ end
 
 local function clickScreen()
     pcall(function()
+        playHitSound() -- ⭐ SUNET CÂND TRAGI
         if mouse1click then mouse1click(); return end
         local vim = game:GetService("VirtualInputManager"); local vp = camera.ViewportSize
         vim:SendMouseButtonEvent(vp.X/2, vp.Y/2, 0, true, game, 0)
@@ -1020,6 +998,25 @@ local function skinStep(dt)
         end
     end
 end
+
+-- ⭐ LOGICA PENTRU KILL SOUND
+local function setupPlayerKillSound(p)
+    if p == localPlayer then return end
+    local function connectDeath(char)
+        local hum = char:WaitForChild("Humanoid", 5)
+        if hum then
+            hum.Died:Connect(function()
+                if not isTeammate(p) then
+                    playKillSound()
+                end
+            end)
+        end
+    end
+    p.CharacterAdded:Connect(connectDeath)
+    if p.Character then connectDeath(p.Character) end
+end
+for _, p in ipairs(Players:GetPlayers()) do setupPlayerKillSound(p) end
+Players.PlayerAdded:Connect(setupPlayerKillSound)
 
 -- Bucle principale
 RunService.RenderStepped:Connect(function(dt)
